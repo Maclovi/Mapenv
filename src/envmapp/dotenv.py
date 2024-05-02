@@ -46,9 +46,10 @@ class MetaClass(type):
         if os.path.isfile(cls.path_env):
             cls._load_to_env(instance)
         elif cls.path_env:
+            cur_path = Path(__file__).parent.resolve()
             raise FileNotFoundError(
                 f"No such file - {cls.path_env!r}\n"
-                f"Your current dir is - {Path(__file__).parent.resolve()}"
+                f"Your current dir is - {cur_path}"
             )
         elif cls.override:
             log.warning("\tNothing to override!")
