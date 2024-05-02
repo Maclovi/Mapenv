@@ -1,22 +1,24 @@
 import unittest
+from dataclasses import is_dataclass
 from decimal import Decimal
+from sys import getsizeof
 
-from src.envmapp.dotenv import Dotenv
+from src.mapenv.main import MapEnv
 
 
-class B:
+class A:
     def __init__(self, val: str) -> None:
         self.val = val
 
 
-class Telegram(Dotenv, load_env="tests/.env", override=True):
+class Telegram(MapEnv, load_env="tests/.env", override=True):
     TOKEN: str
     FLOAT: float
     SET: set[int]
     LIST: list[int]
     FROZENSET: frozenset[int]
     TUPLE: tuple[str, int, str]
-    OTHER: B
+    OTHER: A
     PRICE: Decimal
 
 
@@ -75,8 +77,11 @@ class TestDotenv(unittest.TestCase):
         self.assertEqual(self.tg.FLOAT, float("1.1"))
 
     def test_entity(self) -> None:
-        self.assertIsInstance(self.tg.OTHER, B)
-        self.assertEqual(self.tg.OTHER.val, B("Something").val)
+        self.assertIsInstance(self.tg.OTHER, A)
+        self.assertEqual(self.tg.OTHER.val, A("Something").val)
+
+    def test_dataclass(self) -> None:
+        self.assertEqual(True, is_dataclass(self.tg))
 
 
 if __name__ == "__main__":
