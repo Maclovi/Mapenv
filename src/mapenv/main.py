@@ -1,15 +1,16 @@
 import logging
 import os
-from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, ParamSpec, get_args, get_origin
+from typing import Any, Callable, NewType, ParamSpec, get_args, get_origin
 
 log = logging.getLogger(__name__)
 
 F_Spec = ParamSpec("F_Spec")
 F_Return = Any
-StrDict = dict[str, str]
+
+StrDict = NewType("StrDict", dict[str, str])
+TypedDict = NewType("TypedDict", dict[str, Any])
 
 
 class MetaClass(type):
@@ -18,10 +19,8 @@ class MetaClass(type):
         name: str,
         bases: tuple[Any],
         namespace: dict[str, Any],
-        **kwargs: Any,
+        **_: Any,
     ) -> type:
-        if kwargs:
-            pass
         return super().__new__(cls, name, bases, namespace)
 
     def __init__(
@@ -33,48 +32,46 @@ class MetaClass(type):
     ) -> None:
         super().__init__(name, bases, namespace)
 
-        cls._environ_from_file: dict[str, Any] = {}
         cls.path_env: str = kwargs.get("load_env", "")
         cls.override: bool = kwargs.get("override", False)
 
     def __call__(cls, *args: Any, **kwargs: Any) -> Any:
+        merged_env = cls.merge_env(file=cls.getenv_file(), out=cls.getenv_out())
+        typed_dict = cls.create_types(merged_env)
         instance = super().__call__(*args, **kwargs)
-        print(type(instance))
-        cls.load_to_env(instance)
-        cls.create_const(instance)
+        cls.init_types(instance, typed_dict)
         return instance
 
-    def load_to_env(cls, instance: "MetaClass") -> None:
-        if os.path.isfile(cls.path_env):
-            cls._load_to_env(instance)
-        elif cls.path_env:
-            cur_path = Path(__file__).parent.resolve()
+    def getenv_file(cls) -> StrDict:
+        if not cls.path_env:
+            return StrDict({})
+
+        if not os.path.isfile(cls.path_env):
             raise FileNotFoundError(
                 f"No such file - {cls.path_env!r}\n"
-                f"Your current dir is - {cur_path}"
+                f"Your current dir is - {Path(__file__).parent.resolve()}"
             )
-        elif cls.override:
-            log.warning("\tNothing to override!")
 
-    def _load_to_env(cls, instance: "MetaClass") -> None:
-        if not cls._environ_from_file:
-            env: "StrDict" = get_from_file_env(cls.path_env)
-            cls._environ_from_file |= {
-                key: env.get(key) or os.environ[key]
+        return StrDict({**get_from_file_env(cls.path_env)})
+
+    def getenv_out(cls) -> StrDict:
+        return StrDict(
+            {
+                key: os.environ[key]
                 for key in cls.__annotations__
+                if os.getenv(key)
             }
-        instance._environ_from_file = cls._environ_from_file.copy()
+        )
 
-    def create_const(cls, instance: "MetaClass") -> None:
-        for key, type_hint in cls.__annotations__.items():
-            if cls.override:
-                value = instance._environ_from_file.get(key) or os.environ[key]
-            else:
-                value = os.getenv(key) or instance._environ_from_file[key]
+    def merge_env(cls, *, file: StrDict, out: StrDict) -> StrDict:
+        if cls.override:
+            return StrDict(out | file)
+        return StrDict(file | out)
 
-            value_typed = cls._set_type(type_hint, value)
-            setattr(instance, key, value_typed)
-            instance._environ_from_file[key] = value_typed
+    def create_types(cls, merged_env: StrDict) -> TypedDict:
+        for name, type_hint in cls.__annotations__.items():
+            merged_env[name] = cls._set_type(type_hint, merged_env[name])
+        return TypedDict(merged_env)
 
     def _set_type(cls, type_hint: type, value: str) -> Any:
         tmp_val: str | list[str] | map[Any] = value
@@ -100,32 +97,46 @@ class MetaClass(type):
 
         return origin(tmp_val)
 
+    def init_types(cls, instance: "MetaClass", typed_dict: TypedDict) -> None:
+        for k, v in typed_dict.items():
+            setattr(instance, k, v)
+
 
 class MapEnv(metaclass=MetaClass):
-    pass
-    # def getdict(self) -> dict[str, Any]:
-    #     if hasattr(self, "_environ_from_file") and isinstance(
-    #         self._environ_from_file, dict
-    #     ):
-    #         return self._environ_from_file.copy()
-    #     raise TypeError("Not found _attr _environ_from_file")
+    def __setattr__(self, __name: str, __value: Any) -> None:
+        if __name not in self.__annotations__:
+            raise TypeError("This object is frozen, you can't set attribute")
+        if __name in self.__dict__:
+            raise TypeError("This object is frozen, you can't change attribute")
+        super().__setattr__(__name, __value)
+
+    def __delattr__(self, _: str) -> None:
+        raise TypeError("This object is frozen, you can't delete attribute")
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}{self.__dict__}"
+
+    def todict(self) -> TypedDict:
+        return TypedDict(self.__dict__.copy())
 
 
 def lru_cache(
     max_cache: int,
 ) -> Callable[[Callable[F_Spec, F_Return]], Callable[F_Spec, F_Return]]:
-    cache: dict[int, StrDict] = {}
+    memo: dict[int, StrDict] = {}
 
     def inner(func: Callable[F_Spec, F_Return]) -> Callable[F_Spec, F_Return]:
         @wraps(func)
         def wrapper(*args: F_Spec.args, **kwargs: F_Spec.kwargs) -> F_Return:
-            if len(cache) > max_cache:
-                first_key = next(iter(cache))
-                cache.pop(first_key)
+            if len(memo) > max_cache:
+                first_key = next(iter(memo))
+                memo.pop(first_key)
 
             key_hash = hash(f"{args}{kwargs}")
-            out_func: StrDict = func(*args, **kwargs)
-            return cache.setdefault(key_hash, out_func)
+            if key_hash not in memo:
+                memo[key_hash] = func(*args, **kwargs)
+
+            return memo[key_hash]
 
         return wrapper
 
@@ -135,4 +146,4 @@ def lru_cache(
 @lru_cache(max_cache=32)
 def get_from_file_env(path: str) -> StrDict:
     with open(path, encoding="utf-8") as file:
-        return dict(row.strip().split("=") for row in file)
+        return StrDict(dict(row.strip().split("=") for row in file))

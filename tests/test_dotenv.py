@@ -1,7 +1,5 @@
 import unittest
-from dataclasses import is_dataclass
 from decimal import Decimal
-from sys import getsizeof
 
 from src.mapenv.main import MapEnv
 
@@ -58,16 +56,6 @@ class TestDotenv(unittest.TestCase):
         msg = "tg.FROZENSET is not equal to content"
         self.assertSetEqual(self.tg.FROZENSET, frozenset({0, 1}), msg)
 
-    def test_dict(self) -> None:
-        msg = "tg.getdict() is not dict"
-        self.assertIsInstance(self.tg.getdict(), dict, msg)
-
-    def test_dict_immutable(self) -> None:
-        msg = "tg.getdict()['TOKEN']' id is matches"
-        dct = self.tg.getdict()
-        dct["TOKEN"] = "sometoken"
-        self.assertIsNot(dct["TOKEN"], self.tg.getdict()["TOKEN"], msg)
-
     def test_decimal(self) -> None:
         self.assertIsInstance(self.tg.PRICE, Decimal)
         self.assertEqual(self.tg.PRICE, Decimal("99.99"))
@@ -80,8 +68,9 @@ class TestDotenv(unittest.TestCase):
         self.assertIsInstance(self.tg.OTHER, A)
         self.assertEqual(self.tg.OTHER.val, A("Something").val)
 
-    def test_dataclass(self) -> None:
-        self.assertEqual(True, is_dataclass(self.tg))
+    def test_dict(self) -> None:
+        dct = self.tg.todict()
+        self.assertIsNot(self.tg.__dict__, dct)
 
 
 if __name__ == "__main__":
