@@ -1,6 +1,7 @@
 import unittest
 from decimal import Decimal
 
+from src.mapenv.improve import Improve as improve
 from src.mapenv.main import MapEnv
 
 
@@ -9,7 +10,8 @@ class A:
         self.val = val
 
 
-class Telegram(MapEnv, load_env="tests/.env", override=True):
+@improve(envfile="tests/.env", override=True, frozen=True)
+class Telegram(MapEnv):
     TOKEN: str
     FLOAT: float
     SET: set[int]
