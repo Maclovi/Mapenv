@@ -1,7 +1,6 @@
 import logging
 import os
 from functools import wraps
-from pathlib import Path
 from typing import Any, Callable, NewType, ParamSpec, get_args, get_origin
 
 log = logging.getLogger(__name__)
@@ -30,32 +29,37 @@ class MetaClass(type):
     ) -> None:
         super().__init__(name, bases, namespace)
 
-    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
-        instance = super().__call__(*args, **kwargs)
-
-        merged_env = cls.merge_env(
-            file=cls.getenv_file(envfile=instance.envfile),
-            out=cls.getenv_out(),
-            override=instance.override,
+    def __call__(
+        cls,
+        *args: Any,
+        __envfile: str | None,
+        __override: bool,
+        __frozen: bool,
+        **kwargs: Any,
+    ) -> Any:
+        merged_env = cls.__merge_env(
+            file=cls.__getenv_file(envfile=__envfile),
+            out=cls.__getenv_out(),
+            override=__override,
         )
-        typed_dict = cls.create_types(merged_env=merged_env)
+        typed_dict = cls.__make_types(merged_env=merged_env)
 
-        cls.init_types(instance, typed_dict)
+        instance = super().__call__(*args, **kwargs)
+        cls.__setfrozen(instance=instance, frozen=__frozen)
+        cls.__init_types(instance=instance, typed_dict=typed_dict)
+
         return instance
 
-    def getenv_file(cls, *, envfile: str | None = None) -> StrDict:
+    def __getenv_file(cls, *, envfile: str | None = None) -> StrDict:
         if envfile is None:
             return StrDict({})
 
         if not os.path.isfile(envfile):
-            raise FileNotFoundError(
-                f"No such file - {envfile!r}\n"
-                f"Your current dir is - {Path(__file__).parent.resolve()}"
-            )
+            raise FileNotFoundError(f"No such file - {envfile!r}\n")
 
         return StrDict({**get_from_file_env(envfile)})
 
-    def getenv_out(cls) -> StrDict:
+    def __getenv_out(cls) -> StrDict:
         return StrDict(
             {
                 key: os.environ[key]
@@ -64,19 +68,21 @@ class MetaClass(type):
             }
         )
 
-    def merge_env(
+    def __merge_env(
         cls, *, file: StrDict, out: StrDict, override: bool = False
     ) -> StrDict:
+        if not (file or out):
+            raise TypeError("env is empty")
         if override:
             return StrDict(out | file)
         return StrDict(file | out)
 
-    def create_types(cls, *, merged_env: StrDict) -> TypedDict:
+    def __make_types(cls, *, merged_env: StrDict) -> TypedDict:
         for name, type_hint in cls.__annotations__.items():
-            merged_env[name] = cls._set_type(type_hint, merged_env[name])
+            merged_env[name] = cls.__set_type(type_hint, merged_env[name])
         return TypedDict(merged_env)
 
-    def _set_type(cls, type_hint: type, value: str) -> Any:
+    def __set_type(cls, type_hint: type, value: str) -> Any:
         tmp_val: str | list[str] | map[Any] = value
         origin: type = get_origin(type_hint) or type_hint
         args_of_origin = get_args(type_hint)
@@ -93,31 +99,42 @@ class MetaClass(type):
             and isinstance(tmp_val, list)
         ):
             for i, type_ in enumerate(args_of_origin):
-                tmp_val[i] = cls._set_type(type_, tmp_val[i])
+                tmp_val[i] = cls.__set_type(type_, tmp_val[i])
 
         elif args_of_origin:
             tmp_val = map(args_of_origin[0], tmp_val)
 
         return origin(tmp_val)
 
-    def init_types(cls, instance: "MetaClass", typed_dict: TypedDict) -> None:
+    def __init_types(cls, instance: "MetaClass", typed_dict: TypedDict) -> None:
         for k, v in typed_dict.items():
             setattr(instance, k, v)
 
+    def __setfrozen(cls, instance: "MetaClass", frozen: bool) -> None:
+        name = "_frozen"
+        setattr(instance, name, frozen)
+
 
 class MapEnv(metaclass=MetaClass):
-    # def __setattr__(self, __name: str, __value: Any) -> None:
-    #     if __name not in self.__annotations__:
-    #         raise TypeError("This object is frozen, you can't set attribute")
-    #     if __name in self.__dict__:
-    #         raise TypeError("This object is frozen, you can't change attribute")
-    #     super().__setattr__(__name, __value)
-    #
-    # def __delattr__(self, _: str) -> None:
-    #     raise TypeError("This object is frozen, you can't delete attribute")
-    #
     def __str__(self) -> str:
         return f"{self.__class__.__name__}{self.__dict__}"
+
+    def __setattr__(self, _name: str, _value: Any) -> None:
+        if getattr(self, "_frozen", False):  # noqa [B009]
+            if _name not in self.__annotations__:
+                raise TypeError(
+                    "This object is frozen, you can't set attribute."
+                )
+            if _name in self.__dict__:
+                raise TypeError(
+                    "This object is frozen, you can't change attribute"
+                )
+        super().__setattr__(_name, _value)
+
+    def __delattr__(self, _name: str) -> None:
+        if getattr(self, "_frozen", False):  # noqa [B009]
+            raise TypeError("This object is frozen, you can't delete attribute")
+        super().__delattr__(_name)
 
     def todict(self) -> TypedDict:
         """Return copy dict from self.__dict__"""
@@ -127,7 +144,7 @@ class MapEnv(metaclass=MetaClass):
 def lru_cache(
     max_cache: int,
 ) -> Callable[[Callable[F_Spec, F_Return]], Callable[F_Spec, F_Return]]:
-    memo: dict[int, StrDict] = {}
+    memo: dict[int, Any] = {}
 
     def inner(func: Callable[F_Spec, F_Return]) -> Callable[F_Spec, F_Return]:
         @wraps(func)
@@ -149,5 +166,5 @@ def lru_cache(
 
 @lru_cache(max_cache=32)
 def get_from_file_env(path: str) -> StrDict:
-    with open(path, encoding="utf-8") as file:
+    with open(path, encoding="utf8") as file:
         return StrDict(dict(row.strip().split("=") for row in file))
