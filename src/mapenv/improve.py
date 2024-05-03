@@ -8,6 +8,7 @@ T = TypeVar("T")
 class Improve:
     def __init__(
         self,
+        *,
         envfile: Annotated[
             Optional[str],
             Doc(
@@ -46,9 +47,9 @@ class Improve:
         def wrapper(*args: Any, **kwargs: Any) -> T:
             return class_(
                 *args,
-                envfile=self.envfile,
-                override=self.override,
-                frozen=self.frozen,
+                _MetaClass__envfile=self.envfile,
+                _MetaClass__override=self.override,
+                _MetaClass__frozen=self.frozen,
                 **kwargs,
             )
 
