@@ -1,15 +1,24 @@
 import logging
 import os
+from copy import deepcopy
 from functools import wraps
-from typing import Any, Callable, NewType, ParamSpec, get_args, get_origin
-
-log = logging.getLogger(__name__)
+from typing import (
+    Any,
+    Callable,
+    NewType,
+    ParamSpec,
+    TypeAlias,
+    get_args,
+    get_origin,
+)
 
 F_Spec = ParamSpec("F_Spec")
-F_Return = Any
+F_Return: TypeAlias = Any
 
-StrDict = NewType("StrDict", dict[str, str])
+StrDict: TypeAlias = dict[str, str]
 TypedDict = NewType("TypedDict", dict[str, Any])
+
+log = logging.getLogger(__name__)
 
 
 class MetaClass(type):
@@ -52,21 +61,19 @@ class MetaClass(type):
 
     def __getenv_file(cls, *, envfile: str | None = None) -> StrDict:
         if envfile is None:
-            return StrDict({})
+            return {}
 
         if not os.path.isfile(envfile):
             raise FileNotFoundError(f"No such file - {envfile!r}\n")
 
-        return StrDict({**get_from_file_env(envfile)})
+        return deepcopy(get_from_file_env(envfile))
 
     def __getenv_out(cls) -> StrDict:
-        return StrDict(
-            {
-                key: os.environ[key]
-                for key in cls.__annotations__
-                if os.getenv(key)
-            }
-        )
+        return {
+            key: os.environ[key]
+            for key in cls.__annotations__
+            if os.getenv(key)
+        }
 
     def __merge_env(
         cls, *, file: StrDict, out: StrDict, override: bool = False
@@ -74,15 +81,17 @@ class MetaClass(type):
         if not (file or out):
             raise TypeError("env is empty")
         if override:
-            return StrDict(out | file)
-        return StrDict(file | out)
+            return out | file
+        return file | out
 
     def __make_types(cls, *, merged_env: StrDict) -> TypedDict:
         for name, type_hint in cls.__annotations__.items():
-            merged_env[name] = cls.__set_type(type_hint, merged_env[name])
+            merged_env[name] = cls.__set_type(
+                type_hint=type_hint, value=merged_env[name]
+            )
         return TypedDict(merged_env)
 
-    def __set_type(cls, type_hint: type, value: str) -> Any:
+    def __set_type(cls, *, type_hint: type, value: str) -> Any:
         tmp_val: str | list[str] | map[Any] = value
         origin: type = get_origin(type_hint) or type_hint
         args_of_origin = get_args(type_hint)
@@ -99,18 +108,20 @@ class MetaClass(type):
             and isinstance(tmp_val, list)
         ):
             for i, type_ in enumerate(args_of_origin):
-                tmp_val[i] = cls.__set_type(type_, tmp_val[i])
+                tmp_val[i] = cls.__set_type(type_hint=type_, value=tmp_val[i])
 
         elif args_of_origin:
             tmp_val = map(args_of_origin[0], tmp_val)
 
         return origin(tmp_val)
 
-    def __init_types(cls, instance: "MetaClass", typed_dict: TypedDict) -> None:
+    def __init_types(
+        cls, *, instance: "MetaClass", typed_dict: TypedDict
+    ) -> None:
         for k, v in typed_dict.items():
             setattr(instance, k, v)
 
-    def __setfrozen(cls, instance: "MetaClass", frozen: bool) -> None:
+    def __setfrozen(cls, *, instance: "MetaClass", frozen: bool) -> None:
         name = "_frozen"
         setattr(instance, name, frozen)
 
