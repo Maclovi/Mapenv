@@ -1,16 +1,8 @@
 import logging
 import os
 from copy import deepcopy
-from functools import wraps
-from typing import (
-    Any,
-    Callable,
-    NewType,
-    ParamSpec,
-    TypeAlias,
-    get_args,
-    get_origin,
-)
+from functools import lru_cache
+from typing import Any, NewType, ParamSpec, TypeAlias, get_args, get_origin
 
 F_Spec = ParamSpec("F_Spec")
 F_Return: TypeAlias = Any
@@ -152,30 +144,7 @@ class MapEnv(metaclass=MetaClass):
         return TypedDict(self.__dict__.copy())
 
 
-def lru_cache(
-    max_cache: int,
-) -> Callable[[Callable[F_Spec, F_Return]], Callable[F_Spec, F_Return]]:
-    memo: dict[int, Any] = {}
-
-    def inner(func: Callable[F_Spec, F_Return]) -> Callable[F_Spec, F_Return]:
-        @wraps(func)
-        def wrapper(*args: F_Spec.args, **kwargs: F_Spec.kwargs) -> F_Return:
-            if len(memo) > max_cache:
-                first_key = next(iter(memo))
-                memo.pop(first_key)
-
-            key_hash = hash(f"{args}{kwargs}")
-            if key_hash not in memo:
-                memo[key_hash] = func(*args, **kwargs)
-
-            return memo[key_hash]
-
-        return wrapper
-
-    return inner
-
-
-@lru_cache(max_cache=32)
+@lru_cache(maxsize=8)
 def get_from_file_env(path: str) -> StrDict:
     with open(path, encoding="utf8") as file:
-        return StrDict(dict(row.strip().split("=") for row in file))
+        return dict(row.strip().split("=") for row in file)
