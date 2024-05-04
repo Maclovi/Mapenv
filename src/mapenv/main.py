@@ -144,7 +144,7 @@ class MapEnv(metaclass=MetaClass):
         return TypedDict(self.__dict__.copy())
 
 
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=16)
 def get_from_file_env(path: str) -> StrDict:
     with open(path, encoding="utf8") as file:
         return dict(row.strip().split("=") for row in file)

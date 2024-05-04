@@ -13,69 +13,81 @@ class A:
 @improve(envfile="tests/.env", override=True, frozen=True)
 class TestEnv(MapEnv):
     TOKEN: str
-    FLOAT: float
-    SET: set[int]
-    LIST: list[int]
-    FROZENSET: frozenset[int]
-    TUPLE: tuple[str, int, str]
-    OTHER: A
+    RATES: float
+    ID_USERS: set[int]
+    AVAILABLE_VALUES: list[int]
+    FROZEN_ID_USERS: frozenset[int]
+    WINNER_ID_USERS: tuple[str, int, str, int]
+    USER_CUSTOM_CLASS: A
     PRICE: Decimal
+
+    def __init__(self, val: str) -> None:
+        self.val = val
 
 
 class TestDotenv(unittest.TestCase):
     def setUp(self) -> None:
-        self.tg = TestEnv()
+        self.tg = TestEnv("test")
 
     def test_str(self) -> None:
         self.assertIsInstance(self.tg.TOKEN, str, "tg.TOKEN is not str")
 
     def test_set(self) -> None:
-        self.assertIsInstance(self.tg.SET, set, "tg.SET is not set")
+        self.assertIsInstance(self.tg.ID_USERS, set, "tg.SET is not set")
 
     def test_set_content(self) -> None:
-        msg = "tg.SET is not equal to content"
-        self.assertSetEqual(self.tg.SET, {312, 3213, 3215, 543, 1101}, msg)
+        msg = "tg.ID_USERS is not equal to content"
+        self.assertSetEqual(self.tg.ID_USERS, {312, 3213, 3215, 543, 1101}, msg)
 
     def test_tuple(self) -> None:
-        self.assertIsInstance(self.tg.TUPLE, tuple, "tg.TUPLE is not tuple")
+        self.assertIsInstance(
+            self.tg.WINNER_ID_USERS, tuple, "tg.TUPLE is not tuple"
+        )
 
     def test_tuple_content(self) -> None:
-        msg = "tg.TUPLE is not equal to content"
-        self.assertTupleEqual(self.tg.TUPLE, ("kaka", 10, "popa"), msg)
+        msg = "tg.WINNER_ID_USERS is not equal to content"
+        self.assertTupleEqual(
+            self.tg.WINNER_ID_USERS, ("maksim", 10, "mark", 20), msg
+        )
 
     def test_list(self) -> None:
-        self.assertIsInstance(self.tg.LIST, list, "tg.LIST is not list")
+        self.assertIsInstance(
+            self.tg.AVAILABLE_VALUES, list, "tg.LIST is not list"
+        )
 
     def test_list_content(self) -> None:
-        msg = "tg.LIST is not equal to content"
-        self.assertListEqual(self.tg.LIST, [10, 11, 12, 13], msg)
+        msg = "tg.AVAILABLE_VALUES is not equal to content"
+        self.assertListEqual(self.tg.AVAILABLE_VALUES, [10, 11, 12, 13], msg)
 
     def test_frozenset(self) -> None:
-        msg = "tg.FROZENSET is not frozenset"
-        self.assertIsInstance(self.tg.FROZENSET, frozenset, msg)
+        msg = "tg.FROZEN_ID_USERS is not frozenset"
+        self.assertIsInstance(self.tg.FROZEN_ID_USERS, frozenset, msg)
 
     def test_frozenset_content(self) -> None:
-        msg = "tg.FROZENSET is not equal to content"
-        self.assertSetEqual(self.tg.FROZENSET, frozenset({0, 1}), msg)
+        msg = "tg.FROZEN_ID_USERS is not equal to content"
+        self.assertSetEqual(self.tg.FROZEN_ID_USERS, frozenset({0, 1}), msg)
 
     def test_decimal(self) -> None:
         self.assertIsInstance(self.tg.PRICE, Decimal)
         self.assertEqual(self.tg.PRICE, Decimal("99.99"))
 
     def test_float(self) -> None:
-        self.assertIsInstance(self.tg.FLOAT, float)
-        self.assertEqual(self.tg.FLOAT, float("1.1"))
+        self.assertIsInstance(self.tg.RATES, float)
+        self.assertEqual(self.tg.RATES, float("1.1"))
 
-    def test_entity(self) -> None:
-        self.assertIsInstance(self.tg.OTHER, A)
-        self.assertEqual(self.tg.OTHER.val, A("Something").val)
+    def test_custom_class(self) -> None:
+        self.assertIsInstance(self.tg.USER_CUSTOM_CLASS, A)
+        self.assertEqual(self.tg.USER_CUSTOM_CLASS.val, A("Something").val)
 
     def test_dict(self) -> None:
         dct = self.tg.todict()
         self.assertIsNot(self.tg.__dict__, dct)
 
-        dct["LIST"] = [0000, 0000]
-        self.assertNotEqual(self.tg.LIST, dct["LIST"])
+        dct["AVAILABLE_VALUES"] = [0000, 0000]
+        self.assertNotEqual(self.tg.AVAILABLE_VALUES, dct["AVAILABLE_VALUES"])
+
+    def test_init_values(self) -> None:
+        self.assertEqual(self.tg.val, "test")
 
 
 if __name__ == "__main__":
