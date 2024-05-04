@@ -39,6 +39,23 @@ class Improve:
             ),
         ] = False,
     ) -> None:
+        """
+        ## This decorator provides additional functionality for your class.
+
+        **Note**: Do not use override if you haven't specified file path.
+
+        ### Example
+
+        ```python
+        @impove(
+            envfile="/home/backend/yourproject/.env",  # path to the file
+            override=True,                             # file download priority
+            frozen=True,                               # can't overwrite and add
+        )
+        class DatabasesSettings(EnvMap):
+            pass
+        ```
+        """
         self.envfile = envfile
         self.override = override
         self.frozen = frozen
