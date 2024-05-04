@@ -74,6 +74,9 @@ class TestDotenv(unittest.TestCase):
         dct = self.tg.todict()
         self.assertIsNot(self.tg.__dict__, dct)
 
+        dct["LIST"] = [0000, 0000]
+        self.assertNotEqual(self.tg.LIST, dct["LIST"])
+
 
 if __name__ == "__main__":
     unittest.main()
