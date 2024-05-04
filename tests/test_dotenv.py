@@ -11,7 +11,7 @@ class A:
 
 
 @improve(envfile="tests/.env", override=True, frozen=True)
-class Telegram(MapEnv):
+class TestEnv(MapEnv):
     TOKEN: str
     FLOAT: float
     SET: set[int]
@@ -24,7 +24,7 @@ class Telegram(MapEnv):
 
 class TestDotenv(unittest.TestCase):
     def setUp(self) -> None:
-        self.tg = Telegram()
+        self.tg = TestEnv()
 
     def test_str(self) -> None:
         self.assertIsInstance(self.tg.TOKEN, str, "tg.TOKEN is not str")
