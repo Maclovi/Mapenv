@@ -1,8 +1,9 @@
-from typing import Any, Callable, Optional, TypeVar
+from typing import Callable, Optional, ParamSpec, TypeVar
 
 from typing_extensions import Annotated, Doc
 
 T = TypeVar("T")
+F_Spec = ParamSpec("F_Spec")
 
 
 class Improve:
@@ -61,7 +62,7 @@ class Improve:
         self.frozen = frozen
 
     def __call__(self, class_: Callable[..., T]) -> Callable[..., T]:
-        def wrapper(*args: Any, **kwargs: Any) -> T:
+        def wrapper(*args: F_Spec.args, **kwargs: F_Spec.kwargs) -> T:
             return class_(
                 *args,
                 _MetaClass__envfile=self.envfile,

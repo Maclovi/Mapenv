@@ -2,10 +2,7 @@ import logging
 import os
 from copy import deepcopy
 from functools import lru_cache
-from typing import Any, NewType, ParamSpec, TypeAlias, get_args, get_origin
-
-F_Spec = ParamSpec("F_Spec")
-F_Return: TypeAlias = Any
+from typing import Any, NewType, TypeAlias, get_args, get_origin
 
 StrDict: TypeAlias = dict[str, str]
 TypedDict = NewType("TypedDict", dict[str, Any])
