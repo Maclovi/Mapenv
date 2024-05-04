@@ -7,23 +7,11 @@ requires-python = ">=3.8"
 authors = [
     { name = "Sergey Yavorsky", email = "yavorskyserge@gmail.com" },
 ]
-classifiers = [
-]
-dependencies = [
-]
 
 [project.urls]
 Homepage = ""
 Documentation = ""
 Repository = ""
-
-[project.optional-dependencies]
-
-standard = [
-]
-
-all = [
-]
 
 [tool.mypy]
 strict = true
@@ -36,8 +24,6 @@ addopts = [
 ]
 xfail_strict = true
 junit_family = "xunit2"
-filterwarnings = [
-]
 
 [tool.ruff]
 line-length = 80
