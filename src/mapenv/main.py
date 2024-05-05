@@ -1,6 +1,5 @@
 import logging
 import os
-from copy import deepcopy
 from functools import lru_cache
 from typing import Any, NewType, TypeAlias, get_args, get_origin
 
@@ -55,7 +54,11 @@ class MetaClass(type):
         if not os.path.isfile(envfile):
             raise FileNotFoundError(f"No such file - {envfile!r}\n")
 
-        return deepcopy(get_from_file_env(envfile))
+        return {
+            key: value
+            for key, value in get_from_file_env(envfile).items()
+            if key in cls.__annotations__
+        }
 
     def __getenv_out(cls) -> StrDict:
         return {
@@ -81,28 +84,28 @@ class MetaClass(type):
         return TypedDict(merged_env)
 
     def __set_type(cls, *, type_hint: type, value: str) -> Any:
-        tmp_val: str | list[str] | map[Any] = value
+        val: str | list[str] | map[Any] = value
         origin: type = get_origin(type_hint) or type_hint
         args_of_origin = get_args(type_hint)
 
         if origin is None:
             return None
 
-        if args_of_origin and isinstance(tmp_val, str):
-            tmp_val = tmp_val.split(",")
+        if origin in (list, tuple, set, frozenset):
+            val = val.split(",") if isinstance(val, str) else val
 
         if (
             origin is tuple
             and len(args_of_origin) > 1
-            and isinstance(tmp_val, list)
+            and isinstance(val, list)
         ):
             for i, type_ in enumerate(args_of_origin):
-                tmp_val[i] = cls.__set_type(type_hint=type_, value=tmp_val[i])
+                val[i] = cls.__set_type(type_hint=type_, value=val[i])
 
         elif args_of_origin:
-            tmp_val = map(args_of_origin[0], tmp_val)
+            val = map(args_of_origin[0], val)
 
-        return origin(tmp_val)
+        return origin(val)
 
     def __init_types(
         cls, *, instance: "MetaClass", typed_dict: TypedDict
