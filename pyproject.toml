@@ -15,6 +15,7 @@ Repository = ""
 
 [tool.mypy]
 strict = true
+pretty = true
 
 [tool.pytest.ini_options]
 addopts = [
