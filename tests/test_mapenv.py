@@ -21,13 +21,14 @@ class TestEnv(MapEnv):
     USER_CUSTOM_CLASS: A
     PRICE: Decimal
 
-    def __init__(self, val: str) -> None:
+    def __init__(self, val: str, bar: int) -> None:
         self.val = val
+        self.bar = bar
 
 
 class TestDotenv(unittest.TestCase):
     def setUp(self) -> None:
-        self.tg = TestEnv("test")
+        self.tg = TestEnv("test", 12)
 
     def test_str(self) -> None:
         self.assertIsInstance(self.tg.TOKEN, str, "tg.TOKEN is not str")
@@ -86,8 +87,11 @@ class TestDotenv(unittest.TestCase):
         dct["AVAILABLE_VALUES"] = [0000, 0000]
         self.assertNotEqual(self.tg.AVAILABLE_VALUES, dct["AVAILABLE_VALUES"])
 
-    def test_init_values(self) -> None:
+    def test_init_val(self) -> None:
         self.assertEqual(self.tg.val, "test")
+
+    def test_init_bar(self) -> None:
+        self.assertEqual(self.tg.bar, 12)
 
 
 if __name__ == "__main__":
