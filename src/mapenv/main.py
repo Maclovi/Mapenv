@@ -71,10 +71,16 @@ class MetaClass(type):
         cls, *, file: StrDict, out: StrDict, override: bool = False
     ) -> StrDict:
         if not (file or out):
-            raise TypeError("env is empty")
+            raise TypeError("environment is empty")
+
         if override:
-            return out | file
-        return file | out
+            out.update(file)
+            final = out
+        else:
+            file.update(out)
+            final = file
+
+        return final
 
     def __make_types(cls, *, merged_env: StrDict) -> TypedDict:
         for name, type_hint in cls.__annotations__.items():
