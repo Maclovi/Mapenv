@@ -10,22 +10,6 @@ log = logging.getLogger(__name__)
 
 
 class MetaClass(type):
-    def __new__(
-        cls,
-        name: str,
-        bases: tuple[Any],
-        namespace: dict[str, Any],
-    ) -> type:
-        return super().__new__(cls, name, bases, namespace)
-
-    def __init__(
-        cls,
-        name: str,
-        bases: tuple[Any],
-        namespace: dict[str, Any],
-    ) -> None:
-        super().__init__(name, bases, namespace)
-
     def __call__(
         cls,
         *args: Any,
@@ -43,11 +27,11 @@ class MetaClass(type):
 
         instance = super().__call__(*args, **kwargs)
         cls.__setfrozen(instance=instance, frozen=__frozen)
-        cls.__init_types(instance=instance, typed_dict=typed_dict)
+        cls.__init_values(instance=instance, typed_dict=typed_dict)
 
         return instance
 
-    def __getenv_file(cls, *, envfile: str | None = None) -> StrDict:
+    def __getenv_file(cls, *, envfile: str | None) -> StrDict:
         if envfile is None:
             return {}
 
@@ -113,7 +97,7 @@ class MetaClass(type):
 
         return origin(val)
 
-    def __init_types(
+    def __init_values(
         cls, *, instance: "MetaClass", typed_dict: TypedDict
     ) -> None:
         for k, v in typed_dict.items():
