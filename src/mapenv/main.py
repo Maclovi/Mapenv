@@ -1,12 +1,9 @@
-import logging
 import os
 from functools import lru_cache
 from typing import Any, NewType, TypeAlias, get_args, get_origin
 
 StrDict: TypeAlias = dict[str, str]
 TypedDict = NewType("TypedDict", dict[str, Any])
-
-log = logging.getLogger(__name__)
 
 
 class MetaClass(type):
@@ -26,8 +23,8 @@ class MetaClass(type):
         typed_dict = cls.__make_types(merged_env=merged_env)
 
         instance = super().__call__(*args, **kwargs)
-        cls.__setfrozen(instance=instance, frozen=__frozen)
-        cls.__init_values(instance=instance, typed_dict=typed_dict)
+        instance.__dict__["_frozen"] = __frozen
+        instance.__dict__ |= typed_dict
 
         return instance
 
@@ -97,23 +94,13 @@ class MetaClass(type):
 
         return origin(val)
 
-    def __init_values(
-        cls, *, instance: "MetaClass", typed_dict: TypedDict
-    ) -> None:
-        for k, v in typed_dict.items():
-            setattr(instance, k, v)
-
-    def __setfrozen(cls, *, instance: "MetaClass", frozen: bool) -> None:
-        name = "_frozen"
-        setattr(instance, name, frozen)
-
 
 class MapEnv(metaclass=MetaClass):
     def __str__(self) -> str:
         return f"{self.__class__.__name__}{self.__dict__}"
 
     def __setattr__(self, _name: str, _value: Any) -> None:
-        if getattr(self, "_frozen", False):  # noqa [B009]
+        if _name != "__dict__" and getattr(self, "_frozen", False):  # noqa:B009
             if _name not in self.__annotations__:
                 raise TypeError(
                     "This object is frozen, you can't set attribute."
