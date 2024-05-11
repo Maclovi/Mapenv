@@ -23,8 +23,9 @@ class MetaClass(type):
         typed_dict = cls.__make_types(merged_env=merged_env)
 
         instance = super().__call__(*args, **kwargs)
-        instance.__dict__["_frozen"] = __frozen
-        instance.__dict__ |= typed_dict
+        for key, value in typed_dict.items():
+            setattr(instance, key, value)
+        setattr(instance, "_frozen", __frozen)  # noqa:B010
 
         return instance
 
@@ -100,7 +101,7 @@ class MapEnv(metaclass=MetaClass):
         return f"{self.__class__.__name__}{self.__dict__}"
 
     def __setattr__(self, _name: str, _value: Any) -> None:
-        if _name != "__dict__" and getattr(self, "_frozen", False):  # noqa:B009
+        if getattr(self, "_frozen", False):  # noqa:B009
             if _name not in self.__annotations__:
                 raise TypeError(
                     "This object is frozen, you can't set attribute."
