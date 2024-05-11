@@ -1,9 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
 [project]
 name = "envmapp"
-dynamic = ["version"]
+version = "0.0.1"
 description = "It's a simple mapping your environment"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
 authors = [
     { name = "Sergey Yavorsky", email = "yavorskyserge@gmail.com" },
 ]
@@ -13,9 +24,6 @@ Homepage = ""
 Documentation = ""
 Repository = ""
 
-[tool.mypy]
-strict = true
-pretty = true
 
 [tool.pytest.ini_options]
 addopts = [
@@ -55,6 +63,11 @@ convention = "google"
 # Preserve types, even if a file imports `from __future__ import annotations`.
 keep-runtime-typing = true
 
+[tool.mypy]
+strict = true
+pretty = true
+
 [tool.isort]
 profile = "black"
 line_length = 80
+
